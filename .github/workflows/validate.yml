@@ -19,6 +19,7 @@ jobs:
           node-version: '22'
       - run: python -m compileall -q custom_components
       - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel.js
+      - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel-v101.js
   hassfest:
     runs-on: ubuntu-latest
     steps:
