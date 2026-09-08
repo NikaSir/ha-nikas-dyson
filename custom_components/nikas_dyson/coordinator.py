@@ -6,6 +6,7 @@ from copy import deepcopy
 import logging
 
 from homeassistant.core import callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -22,12 +23,66 @@ class MonitorCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, entry):
         super().__init__(hass, _LOGGER, name=DOMAIN)
         self.entry = entry
-        self.settings = entry.options.get("devices", {})
+        configured = entry.options.get("devices", {})
+        self.settings = {}
+        for preset in PRESETS:
+            key = preset["id"]
+            cfg = dict(configured.get(key, {}))
+            # The three Dyson outlet IDs were explicitly established for this house.
+            # If a preset has such a switch and the user has not configured it yet,
+            # bind only unambiguous same-device power/energy entities from HA's registry.
+            # This is deterministic device-registry discovery, not an entity-name guess.
+            if not cfg and preset.get("suggested_switch"):
+                cfg = self._discover_suggested_source(preset)
+            self.settings[key] = cfg
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self.trackers = {}
         self._unsubs = []
         self._save_pending = False
         self._saved_fingerprint = None
+
+    def _discover_suggested_source(self, preset):
+        switch_entity = preset.get("suggested_switch")
+        switch_state = self.hass.states.get(switch_entity) if switch_entity else None
+        registry = er.async_get(self.hass)
+        switch_entry = registry.async_get(switch_entity) if switch_entity else None
+        if switch_state is None or switch_entry is None or not switch_entry.device_id:
+            return {}
+
+        by_class = {"power": [], "energy": []}
+        for item in er.async_entries_for_device(registry, switch_entry.device_id):
+            if item.disabled_by:
+                continue
+            state = self.hass.states.get(item.entity_id)
+            if state is None:
+                continue
+            device_class = state.attributes.get("device_class")
+            unit = state.attributes.get("unit_of_measurement")
+            if device_class == "power" and unit in {"W", "kW"}:
+                by_class["power"].append(item.entity_id)
+            elif device_class == "energy" and unit in {"Wh", "kWh"}:
+                by_class["energy"].append(item.entity_id)
+
+        # Keep the known switch in diagnostics even when HA exposes zero or multiple
+        # power sensors. A power sensor is attached only when the same-device match
+        # is unambiguous; energy is optional and follows the same rule.
+        result = {
+            "name": preset["name"],
+            "switch_entity": switch_entity,
+            "calibrated": False,
+            "estimate_full": False,
+            "on_w": 5.0,
+            "off_w": 2.0,
+            "start_delay_s": 30.0,
+            "stop_delay_s": 180.0,
+            "min_session_s": 300.0,
+            "stale_after_s": 1800.0,
+        }
+        if len(by_class["power"]) == 1:
+            result["power_entity"] = by_class["power"][0]
+        if len(by_class["energy"]) == 1:
+            result["energy_entity"] = by_class["energy"][0]
+        return result
 
     async def async_start(self):
         saved = await self.store.async_load() or {}
