@@ -1,0 +1,13 @@
+{
+  "domain": "nikas_dyson",
+  "name": "NikaS Dyson",
+  "codeowners": ["@NikaSir"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
+  "documentation": "https://github.com/NikaSir/ha-nikas-dyson",
+  "integration_type": "helper",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/NikaSir/ha-nikas-dyson/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
