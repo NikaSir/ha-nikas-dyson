@@ -28,12 +28,14 @@ class MonitorCoordinator(DataUpdateCoordinator):
         for preset in PRESETS:
             key = preset["id"]
             cfg = dict(configured.get(key, {}))
-            # The three Dyson outlet IDs were explicitly established for this house.
-            # If a preset has such a switch and the user has not configured it yet,
-            # bind only unambiguous same-device power/energy entities from HA's registry.
-            # This is deterministic device-registry discovery, not an entity-name guess.
-            if not cfg and preset.get("suggested_switch"):
-                cfg = self._discover_suggested_source(preset)
+            switch_entity = cfg.get("switch_entity")
+            if not switch_entity and not cfg:
+                switch_entity = preset.get("suggested_switch")
+            if switch_entity:
+                discovered = self._discover_for_switch(preset, switch_entity)
+                # Explicitly saved values always win over automatic suggestions.
+                discovered.update(cfg)
+                cfg = discovered
             self.settings[key] = cfg
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}")
         self.trackers = {}
@@ -41,31 +43,8 @@ class MonitorCoordinator(DataUpdateCoordinator):
         self._save_pending = False
         self._saved_fingerprint = None
 
-    def _discover_suggested_source(self, preset):
-        switch_entity = preset.get("suggested_switch")
-        switch_state = self.hass.states.get(switch_entity) if switch_entity else None
-        registry = er.async_get(self.hass)
-        switch_entry = registry.async_get(switch_entity) if switch_entity else None
-        if switch_state is None or switch_entry is None or not switch_entry.device_id:
-            return {}
-
-        by_class = {"power": [], "energy": []}
-        for item in er.async_entries_for_device(registry, switch_entry.device_id):
-            if item.disabled_by:
-                continue
-            state = self.hass.states.get(item.entity_id)
-            if state is None:
-                continue
-            device_class = state.attributes.get("device_class")
-            unit = state.attributes.get("unit_of_measurement")
-            if device_class == "power" and unit in {"W", "kW"}:
-                by_class["power"].append(item.entity_id)
-            elif device_class == "energy" and unit in {"Wh", "kWh"}:
-                by_class["energy"].append(item.entity_id)
-
-        # Keep the known switch in diagnostics even when HA exposes zero or multiple
-        # power sensors. A power sensor is attached only when the same-device match
-        # is unambiguous; energy is optional and follows the same rule.
+    def _discover_for_switch(self, preset, switch_entity):
+        """Build safe defaults and attach only unambiguous same-device telemetry."""
         result = {
             "name": preset["name"],
             "switch_entity": switch_entity,
@@ -78,10 +57,34 @@ class MonitorCoordinator(DataUpdateCoordinator):
             "min_session_s": 300.0,
             "stale_after_s": 1800.0,
         }
-        if len(by_class["power"]) == 1:
-            result["power_entity"] = by_class["power"][0]
-        if len(by_class["energy"]) == 1:
-            result["energy_entity"] = by_class["energy"][0]
+        try:
+            switch_state = self.hass.states.get(switch_entity)
+            registry = er.async_get(self.hass)
+            switch_entry = registry.async_get(switch_entity)
+            if switch_state is None or switch_entry is None or not switch_entry.device_id:
+                return result
+
+            by_class = {"power": [], "energy": []}
+            for item in er.async_entries_for_device(registry, switch_entry.device_id):
+                if item.disabled_by:
+                    continue
+                state = self.hass.states.get(item.entity_id)
+                if state is None:
+                    continue
+                device_class = state.attributes.get("device_class") or item.device_class or item.original_device_class
+                unit = state.attributes.get("unit_of_measurement")
+                if device_class == "power" and unit in {"W", "kW"}:
+                    by_class["power"].append(item.entity_id)
+                elif device_class == "energy" and unit in {"Wh", "kWh"}:
+                    by_class["energy"].append(item.entity_id)
+            if len(by_class["power"]) == 1:
+                result["power_entity"] = by_class["power"][0]
+            if len(by_class["energy"]) == 1:
+                result["energy_entity"] = by_class["energy"][0]
+        except Exception:
+            # Discovery is an enhancement. The selected switch remains a valid,
+            # visible source even if a third-party entity has unusual registry data.
+            _LOGGER.exception("Unable to discover telemetry for %s", switch_entity)
         return result
 
     async def async_start(self):
