@@ -1,10 +1,46 @@
-"""Simple, robust source binding for six monitored devices."""
+"""Robust source binding for six monitored devices."""
+import logging
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import selector
+from homeassistant.helpers import entity_registry as er, selector
 
 from .const import DOMAIN, NAME, PRESET_BY_ID, PRESETS
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _same_device_telemetry(hass, switch_entity):
+    """Resolve unambiguous power/energy siblings and return persistent bindings."""
+    result = {}
+    if not switch_entity:
+        return result
+    try:
+        registry = er.async_get(hass)
+        plug = registry.async_get(switch_entity)
+        if not plug or not plug.device_id:
+            return result
+        candidates = {"power": [], "energy": []}
+        for item in er.async_entries_for_device(registry, plug.device_id):
+            if item.disabled_by:
+                continue
+            state = hass.states.get(item.entity_id)
+            if not state:
+                continue
+            device_class = state.attributes.get("device_class") or item.device_class or item.original_device_class
+            unit = state.attributes.get("unit_of_measurement")
+            if device_class == "power" and unit in {"W", "kW"}:
+                candidates["power"].append(item.entity_id)
+            elif device_class == "energy" and unit in {"Wh", "kWh"}:
+                candidates["energy"].append(item.entity_id)
+        if len(candidates["power"]) == 1:
+            result["power_entity"] = candidates["power"][0]
+        if len(candidates["energy"]) == 1:
+            result["energy_entity"] = candidates["energy"][0]
+    except Exception:
+        _LOGGER.exception("Unable to resolve telemetry for %s", switch_entity)
+    return result
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -24,14 +60,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlow(config_entries.OptionsFlow):
-    """Bind one HA outlet per logical appliance.
-
-    The first-run flow deliberately stops after this single binding. Power and
-    energy siblings are discovered by the coordinator from the selected HA
-    device. Calibration is kept separate from source binding so an optional or
-    malformed advanced field can never block the basic setup.
-    """
-
     async def async_step_init(self, user_input=None):
         if user_input is not None:
             self.device_key = user_input["device"]
@@ -56,6 +84,11 @@ class OptionsFlow(config_entries.OptionsFlow):
                 devices = dict(self.config_entry.options.get("devices", {}))
                 if source:
                     config = dict(self.previous)
+                    source_changed = self.previous.get("switch_entity") != source
+                    if source_changed:
+                        config.pop("power_entity", None)
+                        config.pop("energy_entity", None)
+                        config.pop("presence_entity", None)
                     config.update({
                         "name": config.get("name", preset["name"]),
                         "switch_entity": source,
@@ -69,11 +102,11 @@ class OptionsFlow(config_entries.OptionsFlow):
                         "min_session_s": float(config.get("min_session_s", 300.0)),
                         "stale_after_s": float(config.get("stale_after_s", 1800.0)),
                     })
-                    # A changed outlet must not retain sensors belonging to the old device.
-                    if self.previous.get("switch_entity") != source:
-                        config.pop("power_entity", None)
-                        config.pop("energy_entity", None)
-                        config.pop("presence_entity", None)
+                    # Persist the resolved telemetry. It must survive integration and HA reloads.
+                    resolved = _same_device_telemetry(self.hass, source)
+                    for field in ("power_entity", "energy_entity"):
+                        if field in resolved:
+                            config[field] = resolved[field]
                     devices[self.device_key] = config
                 else:
                     devices.pop(self.device_key, None)
@@ -85,9 +118,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         marker = vol.Optional("switch_entity", description={"suggested_value": suggested}) if suggested else vol.Optional("switch_entity")
         return self.async_show_form(
             step_id="source",
-            data_schema=vol.Schema({
-                marker: selector.EntitySelector(selector.EntitySelectorConfig(domain="switch"))
-            }),
+            data_schema=vol.Schema({marker: selector.EntitySelector(selector.EntitySelectorConfig(domain="switch"))}),
             errors=errors,
             description_placeholders={"device": preset["name"]},
         )
