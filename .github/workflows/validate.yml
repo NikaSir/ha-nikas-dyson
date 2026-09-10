@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 jobs:
-  validate:
+  repository-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,11 +17,43 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python -m compileall -q custom_components
+      - run: python -m pip install -r requirements-test.txt
+      - run: python -m compileall -q custom_components scripts tests
+      - run: python -m pytest -q
+      - run: python scripts/check_panel_contract.py
       - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel.js
-      - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel-v101.js
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.19.0'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test
   hassfest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
+        with:
+          category: integration
+          # Custom HACS source, not a default-catalog submission; topics are metadata.
+          ignore: topics
+  validate:
+    if: ${{ always() }}
+    needs: [repository-checks, hacs, hassfest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every validation job
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          python - <<'PY'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          if len(results) != 3 or any(result != 'success' for result in results):
+              raise SystemExit('All validation jobs must succeed')
+          PY

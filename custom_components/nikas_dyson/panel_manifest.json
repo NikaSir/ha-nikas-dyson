@@ -1,0 +1,12 @@
+{
+  "id": "dyson",
+  "title": "Техника",
+  "ui_version": "1.0.2",
+  "integration_version": "0.1.5",
+  "path": "/dashboard-dyson",
+  "parent_route": "/dashboard-actions/home",
+  "web_component": "nikas-dyson-panel",
+  "frontend_bundle": "frontend/nikas-dyson-panel.js",
+  "read_only": true,
+  "template_version": "2.2"
+}
