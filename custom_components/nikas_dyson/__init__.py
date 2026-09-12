@@ -35,7 +35,7 @@ async def async_setup_entry(hass, entry):
         await panel_custom.async_register_panel(
             hass=hass, frontend_url_path=PANEL_PATH, webcomponent_name="nikas-dyson-panel",
             sidebar_title="Техника", sidebar_icon="mdi:power-plug-outline",
-            module_url=f"/nikas_dyson_static/nikas-dyson-panel-v101.js?v={UI_VERSION}",
+            module_url=f"/nikas_dyson_static/nikas-dyson-panel.js?v={UI_VERSION}",
             embed_iframe=False, require_admin=False, handle_safe_area=True,
             config={"owner": DOMAIN, "entry_id": entry.entry_id, "ui_version": UI_VERSION,
                     "parent_route": "/dashboard-actions/home", "title": "Техника"},
