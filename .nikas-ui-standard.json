@@ -1,0 +1,33 @@
+{
+  "version": "2.2",
+  "navigation_contract_version": "1.2",
+  "role": "specialized",
+  "ui_version": "1.0.2",
+  "production_entrypoint": "custom_components/nikas_dyson/frontend/nikas-dyson-panel.js",
+  "runtime_files": [
+    "custom_components/nikas_dyson/frontend/nikas-dyson-panel.js"
+  ],
+  "standard_path": "docs/NIKAS_SPECIALIZED_PANEL_UI_STANDARD.md",
+  "standard_sha256": "2a15e5c2483f0fa959faff54cd29144ddb8c392e6da4546bd4c5034bf652c2c7",
+  "navigation_contract_path": "docs/NIKAS_PANEL_NAVIGATION_CONTRACT.md",
+  "navigation_contract_sha256": "79923d2de82ef59ab76e37491f75ba7eb7e7c4c23e62d75142744159cae64229",
+  "source_kit": {
+    "path": "custom_components/nikas_dyson/frontend/src/nikas-specialized-shell.js",
+    "sha256": "c7171560b68e2c4118b327c5e6a63c65e3410a4e1f10a02691e0d15560166e65",
+    "delivery": "vendored-build-time",
+    "runtime_dependency": false
+  },
+  "shell_contract": {
+    "version": "2.1",
+    "host_boundary": "ha-panel",
+    "header_body_px": 60,
+    "peer_selector_px": 52,
+    "bottom_nav_body_px": 64,
+    "content_max_width_px": 1280
+  },
+  "acceptance": {
+    "home_assistant": "pending",
+    "iphone": "pending",
+    "devices": "pending"
+  }
+}

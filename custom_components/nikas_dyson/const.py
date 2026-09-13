@@ -2,8 +2,8 @@
 
 DOMAIN = "nikas_dyson"
 NAME = "NikaS Dyson"
-VERSION = "0.1.4"
-UI_VERSION = "1.0.1"
+VERSION = "0.1.5"
+UI_VERSION = "1.0.2"
 PANEL_PATH = "dashboard-dyson"
 PRESETS = (
     {"id": "dyson_v15", "label": "V15", "name": "Dyson V15 · Гардероб", "kind": "charger", "icon": "mdi:vacuum-outline", "suggested_switch": "switch.socket_zb_24"},
