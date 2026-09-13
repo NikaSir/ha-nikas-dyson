@@ -1,4 +1,4 @@
-const UI_VERSION = "1.0.2";
+const UI_VERSION = "1.0.3";
 const STATUS = {
   charging: ["Заряжается", "good"], charged_estimated: ["Заряжен · оценка", "good"],
   working: ["Работает", "good"], consuming: ["Активное потребление", "good"],
@@ -68,11 +68,10 @@ class NikaSDysonPanel extends HTMLElement {
       .peers{grid-template-columns:repeat(5,minmax(0,1fr)) minmax(68px,1.25fr);gap:4px;padding-inline:6px}
       .peer{font-size:11px;gap:4px}.peer span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
       .setup-action{min-height:44px;grid-column:1/-1;border:1px solid var(--divider-color);border-radius:15px;background:var(--card-background-color);color:var(--primary-color)}
-    </style><div class="shell nikas-shell nikas-shell--with-peer"><header class="nikas-shell__header"><button class="side menu nikas-shell__side-action" aria-label="Меню"><ha-icon icon="mdi:menu"></ha-icon></button><button class="title nikas-shell__title" aria-label="Вернуться в Действия"><strong>Техника</strong><small>UI v${UI_VERSION}</small></button><button class="side right refresh nikas-shell__side-action nikas-shell__side-action--right" aria-label="Обновить"><ha-icon icon="mdi:refresh"></ha-icon></button></header><div class="peers nikas-shell__peer"></div><main class="nikas-shell__viewport viewport"><div class="nikas-shell__canvas canvas"><div class="content nikas-shell__content"><section class="card hero"><div class="hero-icon"><ha-icon class="device-icon" icon="mdi:power-plug-outline"></ha-icon></div><h2 class="device-name">Техника</h2><div class="status muted">Загрузка…</div><div class="note explanation">Получение данных Home Assistant</div></section><section class="view"></section></div></div></main><footer class="nikas-shell__tabs"></footer></div>`;
+    </style><div class="shell nikas-shell nikas-shell--with-peer"><header class="nikas-shell__header"><button class="side menu nikas-shell__side-action" aria-label="Меню"><ha-icon icon="mdi:menu"></ha-icon></button><button class="title nikas-shell__title" aria-label="Вернуться на главную панель"><strong>Техника</strong><small>UI v${UI_VERSION}</small></button><button class="side right refresh nikas-shell__side-action nikas-shell__side-action--right" aria-label="Обновить"><ha-icon icon="mdi:refresh"></ha-icon></button></header><div class="peers nikas-shell__peer"></div><main class="nikas-shell__viewport viewport"><div class="nikas-shell__canvas canvas"><div class="content nikas-shell__content"><section class="card hero"><div class="hero-icon"><ha-icon class="device-icon" icon="mdi:power-plug-outline"></ha-icon></div><h2 class="device-name">Техника</h2><div class="status muted">Загрузка…</div><div class="note explanation">Получение данных Home Assistant</div></section><section class="view"></section></div></div></main><footer class="nikas-shell__tabs"></footer></div>`;
     this.shadowRoot.querySelector(".menu").onclick=()=>this.dispatchEvent(new CustomEvent("hass-toggle-menu",{bubbles:true,composed:true}));
-    this.shadowRoot.querySelector(".title").onclick=()=>this._navigate(this._returnRoute);
+    this.shadowRoot.querySelector(".title").onclick=()=>this._navigate("/home/overview");
     this.shadowRoot.querySelector(".refresh").onclick=()=>this._load(true);
-    this._returnRoute=captureNikasShellReturnRoute({panelId:"dyson",parentRoute:this._panel?.config?.parent_route||"/dashboard-actions/home",safeReturnRoute:"/dashboard-actions/home"});
     this._renderTabs(); this._renderPeers();
   }
   _navigate(path){navigateNikasShell(path);}

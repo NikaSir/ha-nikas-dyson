@@ -9,10 +9,10 @@
 **Reference connection/freshness plaque:** S8 OMNI
 **Reference peer-device status lamps:** Stark SolarPower / StarLine lineage
 **Reference typography and domain status treatment:** LIDER
-**Required navigation companion:** `docs/NIKAS_PANEL_NAVIGATION_CONTRACT.md` v1.2
+**Required navigation companion:** `docs/NIKAS_PANEL_NAVIGATION_CONTRACT.md` v1.3
 **Canonical build-time source kit:** `templates/shell_v2/nikas-specialized-shell.js`
 
-This document supersedes every earlier shell, Header, zoom, scrolling and Bottom Tab Bar rule. Historical documents and named panel implementations remain useful only as visual lineage where they do not conflict with this standard. Version 2.2 keeps the v2 geometry and adds the proven peer-device selector status-lamp contract. It retains the vendored build-time shell source and current four-panel base route topology.
+This document supersedes every earlier shell, Header, zoom, scrolling and Bottom Tab Bar rule. Historical documents and named panel implementations remain useful only as visual lineage where they do not conflict with this standard. Version 2.2 keeps the v2 geometry and adds the proven peer-device selector status-lamp contract. It retains the vendored build-time shell source and hierarchical title navigation defined by Navigation Contract v1.3.
 
 ## 1. Ownership and topology
 
@@ -120,7 +120,7 @@ idle arrow → busy rotation → success check or error glyph → idle arrow.
 - The check confirms the declared HA/API request result only. It never fabricates
   a device acknowledgement, sample timestamp, healthy state or fresh telemetry.
 
-### Center title plaque — return to the source NikaS base panel
+### Center title plaque — open the immediate parent
 
 - The geometrically centered two-line title is a persistent clickable plaque and the sole standard return control from a specialized panel to the NikaS base interface.
 - The first line is the current specialized-panel name. The second line is the interface version in the exact form `UI vX.Y.Z`.
@@ -131,10 +131,9 @@ idle arrow → busy rotation → success check or error glyph → idle arrow.
 - The focus state and pressed response are mandatory and remain visibly distinct from the default state.
 - A transparent title, a plain text label without the S8 OMNI surface, a white-only card surface, a wider `460px` desktop plaque forced into the phone Header, or a locally chosen integration color is non-conforming.
 - An arrow, chevron, a separate `Назад` label and `history.back()` are prohibited.
-- When a specialized panel is opened from `/dashboard-house-v13/home`, `/dashboard-rooms-v11/rooms`, `/dashboard-actions/home` or `/dashboard-infrastructure/overview`, it returns to that same base panel. Permitted sub-routes are normalized according to the required navigation contract.
-- The base shell records the source route in the same click/keyboard handler, immediately before changing location to the specialized panel. Ambient shell synchronization and telemetry updates must not refresh the hand-off timestamp. The common one-shot hand-off key is `sessionStorage["nikas.specialized.source_route.v1"]`; `return_to` or `from` query parameters may be used as an explicit hand-off.
-- The specialized panel captures and validates the route once, persists its accepted route for that panel/client, and does not recalculate it during telemetry updates. Only same-origin routes rooted at `/dashboard-house-v13`, `/dashboard-rooms-v11`, `/dashboard-actions` and `/dashboard-infrastructure` are accepted.
-- Capture precedence is: explicit `return_to`/`from`, one-shot session hand-off, saved route for that specialized panel, safe same-origin referrer, configured `parent_route`, then the repository-defined safe base-panel fallback.
+- The title opens exactly one declared parent level. Every main panel returns to `/home/overview`; an internal detail page returns to its own section.
+- `parent_route` is the only title-route authority. Query parameters, source hand-off, saved routes, referrer and browser history cannot override it.
+- A missing, invalid or self-referencing parent falls back to `/home/overview`. The declared registry rejects parent cycles.
 - Navigation is explicit Home Assistant navigation: `history.pushState()` followed by a `location-changed` event. Browser history is never the routing contract.
 - The title plaque, its accepted route and its click handler are mounted with the fixed Header and survive tab switches, polling, loss/recovery and every state-only patch.
 
@@ -337,7 +336,7 @@ Repository tests or static checks must verify:
 12. a requested connection indicator and enabled blue corner satisfy `NIKAS_CONNECTION_DECORATION_CONTRACT.md` v1.1, including exact tokens, all label lengths, stable DOM and zero state-caused geometry movement; transport/freshness vocabulary and state-tinted surface percentages remain canonical;
 13. the center title is a two-line, exactly `52px` high semantic button, contains no arrow or separate Back label and retains geometric centering;
 14. every reset path normalizes and persists `{scale:1,x:0,y:0}` and native scroll origin;
-15. source-route capture follows `NIKAS_PANEL_NAVIGATION_CONTRACT.md`, uses the four canonical base entry routes, writes the common session hand-off at outbound click/keyboard time, consumes it once, performs explicit HA navigation and contains no `history.back()`;
+15. title navigation follows `NIKAS_PANEL_NAVIGATION_CONTRACT.md`: immediate parent only, native overview at the top, explicit HA navigation, no ambient source authority or `history.back()`;
 16. the hand-off route and timestamp are a required pair, reject missing, invalid, expired and future timestamps, and are both removed before candidate selection;
 17. the production entrypoint is the only runtime file, is autonomous and is reproducible from its declared build inputs;
 18. UI version, manifest/contract, component registration and cache key stay coherent;
@@ -380,7 +379,7 @@ For every matrix entry, compare the measured Header, title plaque, work viewport
 - every peer selector shows one correctly classified lamp per device; selected styling remains unchanged while green/orange/red/gray health states update independently and without geometry shift;
 - the upper menu visually matches S8 OMNI: persistent 97% primary-background strip, divider, blur and three aligned plaques below Dynamic Island;
 - both Header side buttons are visible matching `44px × 44px` plaques;
-- the centered title plaque shows the panel name and exact `UI vX.Y.Z`, returns to each of the four originating NikaS base panels and uses the configured safe fallback after a direct open;
+- the centered title plaque shows the panel name and exact `UI vX.Y.Z`, opens the immediate parent and reaches `/home/overview` from every main panel, including after direct opening;
 - Bottom icons and labels match the Stark SolarPower visual scale;
 - integration/repository icon is present and recognizable in installed/distribution surfaces.
 - a requested connection indicator has the exact `168px × 58px` box, `13px` top/right inset, `18px` radius, internal `10px` lamp and fixed `16/700` + `13/600` text; an enabled blue corner has the exact `205px` circle and fixed fill/anchor from `NIKAS_CONNECTION_DECORATION_CONTRACT.md`;
@@ -394,7 +393,7 @@ For every matrix entry, compare the measured Header, title plaque, work viewport
 - `Дом сейчас` and StarLine contain no unrequested two-level connection indicator.
 - repeated telemetry and tab changes do not change the captured Header return destination or replace its click handler.
 - an unavailable target cannot be commanded and never flashes an optimistic success state;
-- a missing or stale hand-off timestamp falls back safely instead of reusing an old source route.
+- query, storage, hand-off and referrer cannot alter the hierarchical title destination.
 - expanding or collapsing the Home Assistant sidebar changes only the available host width; it does not overlap, offset twice or leave a blank sidebar reserve in the NikaS shell;
 - rotating between portrait and landscape preserves one shell, one work viewport, the selected tab and valid scroll/zoom bounds.
 

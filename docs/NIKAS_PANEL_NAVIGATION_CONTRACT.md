@@ -1,158 +1,67 @@
-# NikaS Panel Navigation and Return Contract v1.2
+# NikaS Panel Navigation and Return Contract v1.3
 
 **Status:** REQUIRED
 **Canonical owner:** `NikaSir/ha-contract-generated-ui`
-**Applies to:** base panels, specialized panels and every transition between them
+**Applies to:** every NikaS panel and its internal detail pages
 
-This contract defines public panel routes, source hand-off and deterministic return behavior. It is a required companion to the NikaS Specialized Panel UI Standard.
+## 1. Hierarchical title navigation
 
-## 1. Route model
+The title opens exactly one declared parent level. A top-level panel opens the native Home Assistant overview at `/home/overview`. This rule applies equally after direct opening and navigation from another panel.
 
-- `panel_root` is the top-level path registered through `frontend_url_path` or `dashboard_path`.
-- `entry_route` is the complete route that opens the canonical first screen.
-- `source_route` is the normalized entry route of the NikaS base panel that opened a specialized panel.
-- `safe_return_route` is the repository-defined base-panel fallback used after a direct open.
-- Identifiers such as `house.vehicles` are registry keys, not URL paths, and must never be supplied to `history.pushState()`.
+All main NikaS panels are top-level for this rollout. Their parent is `/home/overview`, including House, Rooms, Actions, Infrastructure, Access, Climate, Dyson, S8 OMNI, irrigation, ZONT, StarLine, Stark, Keenetic, LIDER, VLESS and Water Accounting.
 
-The four base panels are:
+An internal detail page opens its own section, not the native overview. Rooms preserves diagnostics → room → Rooms overview → native overview. Peer selectors and ordinary tabs do not create hierarchy levels merely because their selection changes.
 
-| Panel | `panel_root` | canonical `entry_route` |
+`parent_route` is the declared immediate parent URL path. Registry identifiers such as `house.vehicles` are not URL paths. A missing, invalid or self-referencing parent falls back to `/home/overview`; route validation must reject parent cycles in the declared hierarchy.
+
+## 2. Public routes and ownership
+
+The canonical machine-readable registry is `navigation/main.yaml`. Existing public routes remain supported:
+
+| Main panel | Entry route | Parent |
 |---|---|---|
-| House now | `/dashboard-house-v13` | `/dashboard-house-v13/home` |
-| Rooms | `/dashboard-rooms-v11` | `/dashboard-rooms-v11/rooms` |
-| Actions | `/dashboard-actions` | `/dashboard-actions/home` |
-| Infrastructure | `/dashboard-infrastructure` | `/dashboard-infrastructure/overview` |
+| House | `/dashboard-house-v13/home` | `/home/overview` |
+| Rooms | `/dashboard-rooms-v11/rooms` | `/home/overview` |
+| Actions | `/dashboard-actions/home` | `/home/overview` |
+| Infrastructure | `/dashboard-infrastructure/overview` | `/home/overview` |
+| Access | `/dashboard-access-v1/home` | `/home/overview` |
+| Climate | `/dashboard-climate-v1/home` | `/home/overview` |
+| Dyson | `/dashboard-dyson` | `/home/overview` |
+| S8 OMNI | `/dashboard-s8-omni` | `/home/overview` |
+| Irrigation | `/dashboard-irrigation` | `/home/overview` |
+| ZONT | `/dashboard-zont` | `/home/overview` |
+| StarLine | `/starline` | `/home/overview` |
+| Stark | `/dashboard-ups` | `/home/overview` |
+| Keenetic | `/dashboard-keenetic` | `/home/overview` |
+| LIDER | `/dashboard-lider` | `/home/overview` |
+| VLESS | `/dashboard-vless-gateway` | `/home/overview` |
+| Water Accounting | `/dashboard-water` | `/home/overview` |
 
-The specialized-panel registry is:
+Every active route has exactly one owner and every installed main panel must have a visible entry link. Home Assistant overview links are valid entry links. A missing, orphaned or mismatched public route is a blocking defect.
 
-| Panel | canonical route | `safe_return_route` |
-|---|---|---|
-| Access | `/dashboard-access-v1/home` | `/dashboard-house-v13/home` |
-| ZONT | `/dashboard-zont` | `/dashboard-house-v13/home` |
-| StarLine | `/starline` | `/dashboard-house-v13/home` |
-| S8 OMNI | `/dashboard-s8-omni` | `/dashboard-actions/home` |
-| HO-SC-8W | `/dashboard-irrigation` | `/dashboard-actions/home` |
-| Stark SolarPower | `/dashboard-ups` | `/dashboard-infrastructure/overview` |
-| Keenetic Hero 4G+ | `/dashboard-keenetic` | `/dashboard-infrastructure/overview` |
-| LIDER | `/dashboard-lider` | `/dashboard-infrastructure/overview` |
-| Water Accounting | `/dashboard-water` | `/dashboard-house-v13/home` |
+## 3. No ambient return authority
 
-`/dashboard-starline` is invalid. The registered StarLine route is `/starline`.
+`return_to`, `from`, source hand-off, saved session/local storage, `document.referrer` and browser history must never choose or override the title destination. Legacy hand-off helpers may remain temporarily for source compatibility, but title navigation does not read or write their state. The former v1.2 capture precedence is retired.
 
-## 2. Ownership and discoverability
+`safe_return_route` is retained as legacy metadata during migration and equals `/home/overview` for main panels. It does not override the declared immediate parent of an internal page.
 
-- The canonical route registry lives in `ha-contract-generated-ui` and is the single source of truth.
-- Every integration repository exposes its registered root, canonical route, safe fallback and contract version in a machine-readable panel contract.
-- One active route has exactly one owner.
-- Every installed specialized panel has at least one visible entry link from the NikaS base interface; a sidebar-only or direct-URL-only panel is non-conforming.
-- Required owners are: House now → Access, ZONT, StarLine and Water Accounting; Actions → S8 OMNI and HO-SC-8W; Infrastructure → Stark SolarPower and Keenetic; the Infrastructure power section → LIDER.
-- A `more-info` action does not count as the required entry link.
+## 4. Validation and navigation
 
-Legacy `/dashboard-house/*` pages may remain declared detail routes during migration. They are not base-panel source routes and must not be used as a return fallback.
+A parent must be an absolute same-origin path, not an external URL, protocol-relative URL, script URL or registry identifier. Parent paths do not contain queries or fragments. Self-parent references and cycles are invalid. Unknown parents must be rejected by the registry before publication.
 
-## 3. Source hand-off
+The geometrically centered title plaque is one semantic button with focus and pressed states, at least 44px high. Its second line remains exactly `UI vX.Y.Z`. Click and keyboard activation perform the same transition. The left rail owns the Home Assistant menu; the right rail owns refresh. No separate arrow or Back control is added.
 
-In the same click/keyboard handler, immediately before navigating from a base panel to a specialized panel, the navigation handler stores the normalized current base route and current epoch timestamp:
+Navigation uses `history.pushState()` and a `location-changed` event. `history.back()`, forced reload and `location.href` assignment are prohibited. Telemetry, refresh, tab and peer changes must not replace the persistent Header or its handler. Only an actual hierarchical page change changes its parent destination.
 
-```javascript
-sessionStorage.setItem("nikas.specialized.source_route.v1", sourceRoute);
-sessionStorage.setItem("nikas.specialized.source_route_at.v1", String(Date.now()));
-```
+## 5. Required verification
 
-Only these values are valid:
+- Execute the actual title/resolver with conflicting query, storage, hand-off and referrer values; it must still choose the declared parent.
+- Check every main title reaches `/home/overview` and every internal title moves exactly one level.
+- Verify direct opening, unavailable storage and repeated telemetry do not change the parent.
+- Validate registered paths, parent existence, absence of cycles and packaged registry parity.
+- Verify semantic title keyboard activation, one navigation per activation, bundle reproducibility, version/cache coherence and required CI.
+- Perform separate live phone acceptance. Automated tests or document parity do not establish device acceptance.
 
-```text
-/dashboard-house-v13/home
-/dashboard-rooms-v11/rooms
-/dashboard-actions/home
-/dashboard-infrastructure/overview
-```
+## 6. Coordinated rollout
 
-- `/dashboard-house-v13/*` normalizes to `/dashboard-house-v13/home`.
-- `/dashboard-rooms-v11/*` normalizes to `/dashboard-rooms-v11/rooms`.
-- `/dashboard-actions/*` normalizes to `/dashboard-actions/home`.
-- `/dashboard-infrastructure/*` normalizes to `/dashboard-infrastructure/overview`.
-- `/dashboard-house` and `/dashboard-house/*` are never stored as the NikaS base source.
-- Both hand-off values are required. A route without a timestamp, a timestamp without a route, a non-finite timestamp, a timestamp from the future or a hand-off older than 30 seconds is invalid.
-- The valid age interval is inclusive: `0 <= Date.now() - timestamp <= 30_000`.
-- The hand-off is one-shot. The specialized panel reads and removes both keys before validating candidates, including when an explicit `return_to` or `from` wins.
-- A partial storage write is rolled back by removing both keys. Storage failure does not block navigation; the specialized panel uses its configured safe fallback.
-- A base shell must not continuously overwrite the hand-off during telemetry, shell synchronization or DOM reconciliation. The timestamp is a defensive expiry guard, not a substitute for click-time capture.
-
-## 4. Return-route capture
-
-A specialized panel resolves its return destination once, when the persistent Header is mounted. Precedence is:
-
-1. first valid `return_to`;
-2. first valid `from`;
-3. valid one-shot source hand-off;
-4. saved route for that specialized panel;
-5. safe same-origin referrer;
-6. configured `parent_route`;
-7. registered `safe_return_route`.
-
-An invalid `return_to` must not suppress a valid `from`. The accepted route is stored under a panel-specific key such as `nikas.<panel_id>.return_route.v1` and is not recalculated during telemetry updates, tab changes or peer-device changes.
-
-`parent_route` is a safe fallback, not an unconditional return destination. It must be an absolute allowed URL path, never a registry identifier.
-
-## 5. Validation
-
-- Accept same-origin URL paths only.
-- Accept only the four base roots listed in section 1, then normalize them to their canonical entry routes.
-- Reject external origins, protocol-relative URLs, `javascript:`, `data:`, specialized-panel routes, arbitrary dashboards and legacy `/dashboard-house` routes.
-- Drop query and hash components unless a base-panel contract explicitly declares them canonical.
-- A malformed explicit parameter does not invalidate lower-precedence valid candidates.
-
-## 6. Header return action
-
-- The geometrically centered title plaque is the sole standard return action.
-- It is one semantic `button`, at least `44px` high, with focus and pressed states.
-- Its first line is the panel name; its second line is exactly `UI vX.Y.Z`.
-- Arrow, chevron, separate Back label, left-rail return control and `history.back()` are prohibited.
-- The left rail owns only the Home Assistant menu; the right rail owns refresh.
-- Header, accepted route and click handler survive every state-only update.
-
-Return navigation is explicit:
-
-```javascript
-window.history.pushState(null, "", route);
-window.dispatchEvent(new Event("location-changed"));
-```
-
-Assigning `location.href`, reloading the page or relying on browser-history depth is prohibited.
-
-## 7. Required automated checks
-
-CI must fail when any of the following is false:
-
-1. every `entry_route` belongs to its registered `panel_root`;
-2. every outbound target exists and has exactly one owner;
-3. every specialized panel has a declared visible base entry;
-4. no source or fallback uses `/dashboard-house`, `/dashboard-starline` or a registry identifier;
-5. all four base source routes normalize exactly as specified;
-6. both hand-off values are required, validated as a pair and consumed once;
-7. direct open uses the declared safe fallback;
-8. invalid or external routes are rejected;
-9. the center title is a semantic version-only return button;
-10. no runtime source contains `history.back()`;
-11. repeated telemetry and tab changes preserve the captured route and handler;
-12. JavaScript syntax, package validation, HACS and Hassfest pass.
-13. every declared base-panel outbound handler writes the source hand-off immediately before navigation, rolls back a partial write and no ambient render/sync path refreshes it;
-14. missing, non-finite, expired and future timestamps are rejected.
-
-A missing, orphaned or mismatched public route is a blocking defect.
-
-## 8. Required phone acceptance
-
-On the primary iPhone viewport verify:
-
-- each declared base card opens its actual specialized route;
-- the title plaque returns to the same originating base panel;
-- House now returns to `/dashboard-house-v13/home`, never `/dashboard-house`;
-- a direct open returns to the declared safe fallback;
-- refresh, polling, tab changes and peer switches do not alter the destination;
-- Header does not flash, rebuild or lose its click handler.
-
-## 9. Route changes
-
-A public route change is atomic: update the canonical registry, owner registration, inbound links, fallbacks, tests and documentation in one coordinated rollout. Keep a temporary alias or redirect until every consumer is updated. Removing an old route before its consumers migrate is prohibited.
+Publish updated contract, source kit, consumer metadata, runtime handlers and tests together. Do not remove existing public entry routes or restore retired central runtime dashboards. Track consumers that still implement v1.2 as pending migration; never certify them from a document-only update.
