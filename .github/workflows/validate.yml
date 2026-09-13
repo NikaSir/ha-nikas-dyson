@@ -20,6 +20,7 @@ jobs:
       - run: python -m pip install -r requirements-test.txt
       - run: python -m compileall -q custom_components scripts tests
       - run: python -m pytest -q
+      - run: node tests/test_title_parent.cjs
       - run: python scripts/check_panel_contract.py
       - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel.js
       - uses: pnpm/action-setup@v4

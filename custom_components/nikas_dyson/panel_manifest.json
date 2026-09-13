@@ -1,10 +1,10 @@
 {
   "id": "dyson",
   "title": "Техника",
-  "ui_version": "1.0.2",
-  "integration_version": "0.1.5",
+  "ui_version": "1.0.3",
+  "integration_version": "0.1.6",
   "path": "/dashboard-dyson",
-  "parent_route": "/dashboard-actions/home",
+  "parent_route": "/home/overview",
   "web_component": "nikas-dyson-panel",
   "frontend_bundle": "frontend/nikas-dyson-panel.js",
   "read_only": true,

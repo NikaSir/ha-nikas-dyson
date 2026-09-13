@@ -38,7 +38,7 @@ async def async_setup_entry(hass, entry):
             module_url=f"/nikas_dyson_static/nikas-dyson-panel.js?v={UI_VERSION}",
             embed_iframe=False, require_admin=False, handle_safe_area=True,
             config={"owner": DOMAIN, "entry_id": entry.entry_id, "ui_version": UI_VERSION,
-                    "parent_route": "/dashboard-actions/home", "title": "Техника"},
+                    "parent_route": "/home/overview", "title": "Техника"},
         )
         domain_data["panel_owned"] = True
     except Exception:
