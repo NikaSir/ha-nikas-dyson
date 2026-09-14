@@ -23,7 +23,7 @@ jobs:
       - run: node tests/test_title_parent.cjs
       - run: python scripts/check_panel_contract.py
       - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel.js
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: '11.19.0'
       - run: pnpm install --frozen-lockfile
