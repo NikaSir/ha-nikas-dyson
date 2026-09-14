@@ -22,3 +22,10 @@ class DeliveryTests(unittest.TestCase):
     def test_documented_integration_version_matches_manifest(self):
         manifest = json.loads((COMPONENT / 'manifest.json').read_text())
         self.assertIn(f'**{manifest["version"]}**', (ROOT / 'README.md').read_text())
+
+    def test_documented_ui_version_matches_panel_manifest(self):
+        panel_manifest = json.loads((COMPONENT / 'panel_manifest.json').read_text())
+        self.assertIn(
+            f'Интерфейс: **UI v{panel_manifest["ui_version"]}**',
+            (ROOT / 'README.md').read_text(),
+        )
