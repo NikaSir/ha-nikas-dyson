@@ -10,11 +10,11 @@ jobs:
   repository-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - run: python -m pip install -r requirements-test.txt
@@ -23,7 +23,7 @@ jobs:
       - run: node tests/test_title_parent.cjs
       - run: python scripts/check_panel_contract.py
       - run: node --check custom_components/nikas_dyson/frontend/nikas-dyson-panel.js
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: '11.19.0'
       - run: pnpm install --frozen-lockfile
@@ -32,12 +32,12 @@ jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
   hacs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
         with:
           category: integration
